@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env bash
 set -euo pipefail
 
 # --------- CHEMINS A ADAPTER ----------
-GEM5="$HOME/gem5/build/RISCV/gem5.opt"
-CFG="$HOME/ES201-TP/se_cache.py"
+GEM5="/home/edilb/gem5/build/RISCV/gem5.opt"
+CFG="/mnt/c/Users/edilb/Documents/Informatique/Architecture/ES201-TP/se_cache.py"
 
-BIN_DIR="$HOME/ES201-TP/TP4/exo3/"   # là où sont les .riscv
+BIN_DIR="/mnt/c/Users/edilb/Documents/Informatique/Architecture/ES201-TP/TP4/exo3/"   # là où sont les .riscv
 # -------------------------------------
 
 PROGS=("normale" "pointer" "tempo" "unrol")
@@ -16,10 +16,10 @@ run_one () {
   local conf=$2
   local outdir=$3
 
-  # $GEM5 -d "$outdir" "$CFG" \
-  #   --cmd="$BIN_DIR/${prog}.riscv" \
-  #   --cpu-type=timing --caches \
-  #   --conf="$conf" --line-size=32
+  $GEM5 -d "$outdir" "$CFG" \
+    --cmd="$BIN_DIR/${prog}.riscv" \
+    --cpu-type=timing --caches \
+    --conf="$conf" --line-size=32
 
   local imiss dmiss l2miss
   imiss=$(grep -m1 -E "icache.*MissRate::total|icache.*overallMissRate::total" "$outdir/stats.txt" | awk '{print $2}' || true)

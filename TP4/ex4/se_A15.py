@@ -4,6 +4,7 @@ import argparse
 import m5
 from m5.objects import *
 
+# ---------------- Caches ----------------
 class L1ICache(Cache):
     tag_latency = 2
     data_latency = 2
@@ -12,6 +13,7 @@ class L1ICache(Cache):
     tgts_per_mshr = 8
     is_read_only = True
     writeback_clean = True
+
     def connectCPU(self, cpu): self.cpu_side = cpu.icache_port
     def connectBus(self, bus): self.mem_side = bus.cpu_side_ports
 
@@ -22,6 +24,7 @@ class L1DCache(Cache):
     mshrs = 8
     tgts_per_mshr = 8
     writeback_clean = True
+
     def connectCPU(self, cpu): self.cpu_side = cpu.dcache_port
     def connectBus(self, bus): self.mem_side = bus.cpu_side_ports
 
@@ -32,16 +35,19 @@ class L2Cache(Cache):
     mshrs = 16
     tgts_per_mshr = 12
     writeback_clean = True
+
     def connectCPUSideBus(self, bus): self.cpu_side = bus.mem_side_ports
     def connectMemSideBus(self, bus): self.mem_side = bus.cpu_side_ports
 
 def parse_args():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--cmd", required=True)
-    ap.add_argument("--options", nargs=argparse.REMAINDER, default=[])
+    ap.add_argument("--cmd", required=True, help="binaire ARM a executer")
+    ap.add_argument("--options", nargs=argparse.REMAINDER, default=[], help="args du binaire")
+    ap.add_argument("--out", default="", help="juste informatif")
     ap.add_argument("--clock", default="2GHz")
     ap.add_argument("--mem-size", default="2GB")
     ap.add_argument("--maxinsts", type=int, default=0)
+    ap.add_argument("--caches", default="32kB", help="L1 cache size (default: 32kB)")
     return ap.parse_args()
 
 def build_system(args):
@@ -50,55 +56,52 @@ def build_system(args):
     system.mem_mode = "timing"
     system.mem_ranges = [AddrRange(args.mem_size)]
 
-    # Cortex A7: blocs 32B
-    system.cache_line_size = 32
+    # Cortex A15: blocs 64B
+    system.cache_line_size = 64
 
+    # CPU (O3)
     system.cpu = DerivO3CPU()
 
-    # IMPORTANT: O3 default fetch buffer = 64B dans certaines versions gem5.
-    # Avec des lignes de cache 32B, ca declenche le fatal "fetch buffer 64 > block 32".
-    system.cpu.fetchBufferSize = 32
-
     # Fetch queue
-    system.cpu.fetchQueueSize = 8
+    system.cpu.fetchQueueSize = 15
+    
+    # Decode / Issue / Commit : 4 / 8 / 4
+    system.cpu.decodeWidth  = 4
+    system.cpu.issueWidth   = 8
+    system.cpu.commitWidth  = 4
 
-    # Decode / Issue / Commit : 2 / 4 / 2
-    system.cpu.decodeWidth  = 2
-    system.cpu.issueWidth   = 4
-    system.cpu.commitWidth  = 2
+    # Pour coherence des autres largeurs O3
+    system.cpu.fetchWidth    = 4
+    system.cpu.renameWidth   = 8
+    system.cpu.dispatchWidth = 8
+    system.cpu.wbWidth       = 4
 
-    # Coherence autres largeurs
-    system.cpu.fetchWidth    = 2
-    system.cpu.renameWidth   = 4
-    system.cpu.dispatchWidth = 4
-    system.cpu.wbWidth       = 2
+    # RUU/LSQ : 16 / 16  (gem5: ROB=16, LQ=16, SQ=16)
+    system.cpu.numROBEntries = 16
+    system.cpu.LQEntries = 16
+    system.cpu.SQEntries = 16
 
-    # RUU/LSQ : 2 / 8  (interpretation gem5: ROB=2, LQ=8, SQ=8)
-    system.cpu.numROBEntries = 2
-    system.cpu.LQEntries = 8
-    system.cpu.SQEntries = 8
-
-    # Branch predictor : bimodal, BTB=256
-    # BiModeBP correspond au "bimodal/bi-mode" cote gem5 classic.
-    system.cpu.branchPred = BiModeBP()
+    # Branch predictor : "2 level", BTB=256
+    # En gem5 classic, LocalBP correspond a un 2-level local predictor.
+    system.cpu.branchPred = LocalBP()
     system.cpu.branchPred.BTBEntries = 256
 
-    # -------- Caches C-A7 --------
-    # I-L1: 32KB / 32 / 2
+    # -------- Caches C-A15 --------
+    # I-L1: 32KB / 64 / 2
     system.cpu.icache = L1ICache()
-    system.cpu.icache.size = "32kB"
+    system.cpu.icache.size = args.caches
     system.cpu.icache.assoc = 2
 
-    # D-L1: 32KB / 32 / 2
+    # D-L1: 32KB / 64 / 2
     system.cpu.dcache = L1DCache()
-    system.cpu.dcache.size = "32kB"
+    system.cpu.dcache.size = args.caches
     system.cpu.dcache.assoc = 2
 
-    # L2: 512KB / 32 / 8
+    # L2: 512KB / 64 / 16
     system.l2bus = L2XBar()
     system.l2cache = L2Cache()
     system.l2cache.size = "512kB"
-    system.l2cache.assoc = 8
+    system.l2cache.assoc = 16
 
     system.cpu.icache.connectCPU(system.cpu)
     system.cpu.dcache.connectCPU(system.cpu)
@@ -116,6 +119,7 @@ def build_system(args):
     system.mem_ctrl.dram.range = system.mem_ranges[0]
     system.mem_ctrl.port = system.membus.mem_side_ports
 
+    # Workload SE
     process = Process()
     process.cmd = [args.cmd] + args.options
     system.workload = SEWorkload.init_compatible(args.cmd)
@@ -138,5 +142,6 @@ def main():
 
     m5.stats.dump()
     print(f"Exiting @ tick {m5.curTick()} because {ev.getCause()}")
+
 
 main()
