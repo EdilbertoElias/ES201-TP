@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # --------- CHEMINS A ADAPTER ----------
-GEM5="/home/edilb/gem5/build/RISCV/gem5.opt"
-CFG="/mnt/c/Users/edilb/Documents/Informatique/Architecture/ES201-TP/se_cache.py"
+GEM5="/home/edilberto-elias-xavier-junior/gem5/build/RISCV/gem5.opt"
+CFG="/home/edilberto-elias-xavier-junior/Informatique/Architecture/ES201-TP/se_cache.py"
 
-BIN_DIR="/mnt/c/Users/edilb/Documents/Informatique/Architecture/ES201-TP/TP4/exo3/"   # là où sont les .riscv
+BIN_DIR="/home/edilberto-elias-xavier-junior/Informatique/Architecture/ES201-TP/TP4/exo3"   # là où sont les .riscv
 # -------------------------------------
 
 PROGS=("normale" "pointer" "tempo" "unrol")

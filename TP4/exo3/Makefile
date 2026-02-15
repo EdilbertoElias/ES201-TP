@@ -4,7 +4,7 @@ CC_RISCV=riscv64-linux-gnu-gcc
 
 CFLAGS_COMMON=-O3 -Wall -std=c99 -DLITTLE_ENDIAN
 # Gem5 SE: binaire statique conseillé
-CFLAGS_RISCV=-O3 -Wall -std=c99 -DLITTLE_ENDIAN -static
+CFLAGS_RISCV=-O3 -Wall -std=c99 -DLITTLE_ENDIAN -static 
 
 PROGS=normale pointer tempo unrol
 
